@@ -14,9 +14,12 @@ const (
 
 // generateRandomElements generates random elements.
 func generateRandomElements(size int) []int {
+	if size <= 0 {
+		return nil
+	}
 	slice := make([]int, size)
 	for i := 0; i < size; i++ {
-		slice[i] = rand.Intn(100)
+		slice[i] = rand.Int()
 	}
 	return slice
 }
@@ -26,19 +29,19 @@ func maximum(data []int) int {
 	if len(data) == 0 {
 		return 0
 	}
-	max := data[0]
+	maxVal := data[0]
 	for _, value := range data {
-		if value > max {
-			max = value
+		if value > maxVal {
+			maxVal = value
 		}
 	}
-	return max
+	return maxVal
 }
 
 // maxChunks returns the maximum number of elements in a chunks.
 func maxChunks(data []int) int {
 	var wg sync.WaitGroup
-	ch := make(chan int, CHUNKS)
+	results := make([]int, CHUNKS)
 	chunkSize := len(data) / CHUNKS
 	wg.Add(CHUNKS)
 	for i := 0; i < CHUNKS; i++ {
@@ -51,38 +54,29 @@ func maxChunks(data []int) int {
 			end = len(data)
 		}
 
-		go func(partSlice []int) {
+		go func(partSlice []int, idx int) {
 			localmax := maximum(partSlice)
-			ch <- localmax
+			results[idx] = localmax
 			wg.Done()
-		}(data[start:end])
+		}(data[start:end], i)
 	}
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-	finalMax := 0
-	for val := range ch {
-		if val > finalMax {
-			finalMax = val
-		}
-	}
-	return finalMax
+	wg.Wait()
+	return maximum(results)
 }
 
 func main() {
-	var max int
+	var maxVal int
 	var elapsed int64
 	fmt.Printf("Генерируем %d целых чисел\n", SIZE)
 	elements := generateRandomElements(SIZE)
 	fmt.Println("Ищем максимальное значение в один поток")
 	startTime := time.Now()
-	max = maximum(elements)
+	maxVal = maximum(elements)
 	elapsed = time.Since(startTime).Milliseconds()
-	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
+	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", maxVal, elapsed)
 	fmt.Printf("Ищем максимальное значение в %d потоков\n", CHUNKS)
 	startTime = time.Now()
-	max = maxChunks(elements)
+	maxVal = maxChunks(elements)
 	elapsed = time.Since(startTime).Milliseconds()
-	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
+	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", maxVal, elapsed)
 }
